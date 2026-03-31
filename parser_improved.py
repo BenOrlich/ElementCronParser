@@ -6,16 +6,16 @@ import sys
 
 
 class TimePart:
-    class __IncrementType(Enum):
+    class __PartType(Enum):
         FIXED = 0
         WILDCARD = 1
-        NONE = 2
+        FUTURE = 2
     
-    def __init__(self, value: int, parent: TimePart|None, increment_type: __IncrementType, max:int) -> None:
+    def __init__(self, value: int, parent: TimePart|None, part_type: __PartType, max:int) -> None:
         self.value = value
         self.__max = max
         self.__parent = parent
-        self.__increment_type = increment_type
+        self.__part_type = part_type
         
     def __wildcard(self):
         if self.value == self.__max:
@@ -30,31 +30,32 @@ class TimePart:
             self.__parent.__increment()
     
     def __increment(self):
-        match self.__increment_type:
-            case self.__IncrementType.FIXED:
+        match self.__part_type:
+            case self.__PartType.FIXED:
                 self.__fixed()
-            case self.__IncrementType.WILDCARD:
+            case self.__PartType.WILDCARD:
                 self.__wildcard()
+        self.__part_type = self.__PartType.FUTURE
     
-    def parse_next_time_part(self, time_part_str: str, max: int, current_time_part: int, possibly_current: bool) -> tuple[TimePart, bool]:
-        match time_part_str, possibly_current:
+    def parse_next(self, time_part_str: str, max: int, current_value: int) -> TimePart:
+        match time_part_str, self.__part_type == self.__PartType.FUTURE:
             case "*", True:
-                return TimePart(current_time_part, self, self.__IncrementType.WILDCARD, max), True
+                return TimePart(current_value, self, self.__PartType.WILDCARD, max)
             case "*", False:
-                return TimePart(0, self, self.__IncrementType.NONE, max), False
+                return TimePart(0, self, self.__PartType.FUTURE, max)
             case _, True:
                 time_part = int(time_part_str)
-                if time_part < current_time_part:
+                if time_part < current_value:
                     self.__increment()
-                    return TimePart(time_part, self, self.__IncrementType.NONE, max), False
+                    return TimePart(time_part, self, self.__PartType.FUTURE, max)
                 else:
-                    return TimePart(time_part, self, self.__IncrementType.FIXED if time_part == current_time_part else self.__IncrementType.NONE, max), time_part == current_time_part
+                    return TimePart(time_part, self, self.__PartType.FIXED if time_part == current_value else self.__PartType.FUTURE, max)
             case _, False:
                 time_part = int(time_part_str)
-                return TimePart(time_part, self, self.__IncrementType.NONE, max), False
+                return TimePart(time_part, self, self.__PartType.FUTURE, max)
     @staticmethod
-    def init_base_time_part(initial_value: int) -> TimePart:
-        return TimePart(initial_value, None, TimePart.__IncrementType.WILDCARD, initial_value+1)
+    def init_base(initial_value: int) -> TimePart:
+        return TimePart(initial_value, None, TimePart.__PartType.WILDCARD, initial_value+1)
     
     def get_value(self) -> int:
         return self.value
@@ -84,9 +85,9 @@ def parse_line(current_hour: int, current_minute: int, line: str) -> None:
     else:
         minute_str, hour_str, command = job
             
-        day = TimePart.init_base_time_part(0)
-        hour, potentially_current = day.parse_next_time_part(hour_str, 23, current_hour, True)
-        minute, _ = hour.parse_next_time_part(minute_str, 59, current_minute, potentially_current)
+        day = TimePart.init_base(0)
+        hour = day.parse_next(hour_str, 23, current_hour)
+        minute = hour.parse_next(minute_str, 59, current_minute)
                     
         print(f"{hour.get_value():02d}:{minute.get_value():02d} {"today" if day.get_value() == 0 else "tomorrow"} - {command}")
 
