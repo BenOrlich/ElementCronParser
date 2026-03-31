@@ -51,6 +51,40 @@ def parse_line(current_hour: int, current_minute: int, line: str) -> None:
         print(f"{job_hour:02d}:{job_minute:02d} {"today" if today else "tomorrow"} - {command}")
 
 
+def parse_line_2(current_hour: int, current_minute: int, line: str) -> None:
+    job = line.rstrip().split(" ", 2)
+    if len(job) != 3 or not is_time(job[1], job[0], True):
+        print(f"Incorrect format: {line.rstrip()}")
+    else:
+        minute_str, hour_str, command = job
+        
+        if hour_str == "*":
+            job_hour = current_hour
+            current = True
+            today = True
+        else:
+            job_hour = int(hour_str)
+            today = job_hour >= current_hour
+            current = job_hour == current_hour
+        
+        match minute_str, current, hour_str, job_hour:
+            case "*", True, *_:
+                job_minute = current_minute
+            case "*", False, *_:
+                job_minute = 0
+            case _, True, "*", 23:
+                pass
+            case _, True:
+                job_minute = int(minute_str)
+                if job_minute < current_minute:
+                    today = False
+            case _, False, *_:
+                job_minute = int(minute_str)
+                
+                    
+        print(f"{job_hour:02d}:{job_minute:02d} {"today" if today else "tomorrow"} - {command}")
+
+
 
 
 if __name__ == "__main__":
