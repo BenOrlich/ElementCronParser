@@ -11,6 +11,9 @@ class TimePart:
         WILDCARD = 1
         FUTURE = 2
     
+    class NotATimePartError(ValueError):
+        pass
+    
     def __init__(self, value: int, parent: TimePart|None, part_type: __PartType, max:int) -> None:
         self.value = value
         self.__max = max
@@ -39,6 +42,8 @@ class TimePart:
         self.__part_type = self.__PartType.FUTURE
     
     def parse_next(self, time_part_str: str, max: int, current_value: int) -> TimePart:
+        if self.is_time_part(time_part_str, max, True): raise self.NotATimePartError
+        
         match time_part_str, self.__part_type == self.__PartType.FUTURE:
             case "*", True:
                 return TimePart(current_value, self, self.__PartType.WILDCARD, max)
@@ -62,39 +67,43 @@ class TimePart:
     def init_base(initial_value: int) -> TimePart:
         return TimePart(initial_value, None, TimePart.__PartType.WILDCARD, initial_value+1)
     
+    @staticmethod
+    def is_time_part(time: str, max: int, allow_wildcard:bool) -> bool:
+        if allow_wildcard and time == "*": return True
+        try:
+            t = int(time)
+        except ValueError:
+            return False
+        return 0 <= t <= max
+    
     def get_value(self) -> int:
         return self.value
 
 
 
 
-def is_time_part(time: str, max: int, allow_wildcard:bool) -> bool:
-    if allow_wildcard and time == "*": return True
-    
-    try:
-        t = int(time)
-    except ValueError:
-        return False
-    
-    return 0 <= t <= max
 
 
 def is_time(hour: str, minute: str, allow_wildcard:bool=False) -> bool:
-    return is_time_part(hour, 23, allow_wildcard) and is_time_part(minute, 59, allow_wildcard)
+    return TimePart.is_time_part(hour, 23, allow_wildcard) and TimePart.is_time_part(minute, 59, allow_wildcard)
 
 
 def parse_line(current_hour: int, current_minute: int, line: str) -> None:
     job = line.rstrip().split(" ", 2)
-    if len(job) != 3 or not is_time(job[1], job[0], True):
-        print(f"Incorrect format: {line.rstrip()}")
+    failure_text = f"Incorrect format: {line.rstrip()}"
+    if len(job) != 3:
+        print(failure_text)
     else:
         minute_str, hour_str, command = job
-            
-        day = TimePart.init_base(0)
-        hour = day.parse_next(hour_str, 23, current_hour)
-        minute = hour.parse_next(minute_str, 59, current_minute)
-                    
-        print(f"{hour.get_value():02d}:{minute.get_value():02d} {"today" if day.get_value() == 0 else "tomorrow"} - {command}")
+        
+        try:
+            day = TimePart.init_base(0)
+            hour = day.parse_next(hour_str, 23, current_hour)
+            minute = hour.parse_next(minute_str, 59, current_minute)
+        except TimePart.NotATimePartError:
+            print(failure_text)
+        else:
+            print(f"{hour.get_value():02d}:{minute.get_value():02d} {"today" if day.get_value() == 0 else "tomorrow"} - {command}")
 
 
 
