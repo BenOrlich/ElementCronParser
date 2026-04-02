@@ -15,7 +15,7 @@ def is_time_part(time: str, max: int, allow_wildcard:bool) -> bool:
 
 
 def is_time(hour: str, minute: str, allow_wildcard:bool=False) -> bool:
-    return is_time_part(hour, 24, allow_wildcard) and is_time_part(minute, 60, allow_wildcard)
+    return is_time_part(hour, 23, allow_wildcard) and is_time_part(minute, 59, allow_wildcard)
 
 
 def parse_line(current_hour: int, current_minute: int, line: str) -> None:
