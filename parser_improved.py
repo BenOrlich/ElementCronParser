@@ -35,14 +35,17 @@ class TimePart:
                 self.__fixed()
             case self.__PartType.WILDCARD:
                 self.__wildcard()
+                
         self.__part_type = self.__PartType.FUTURE
     
     def parse_next(self, time_part_str: str, max: int, current_value: int) -> TimePart:
         match time_part_str, self.__part_type == self.__PartType.FUTURE:
             case "*", True:
                 return TimePart(current_value, self, self.__PartType.WILDCARD, max)
+            
             case "*", False:
                 return TimePart(0, self, self.__PartType.FUTURE, max)
+            
             case _, True:
                 time_part = int(time_part_str)
                 if time_part < current_value:
@@ -50,9 +53,11 @@ class TimePart:
                     return TimePart(time_part, self, self.__PartType.FUTURE, max)
                 else:
                     return TimePart(time_part, self, self.__PartType.FIXED if time_part == current_value else self.__PartType.FUTURE, max)
+            
             case _, False:
                 time_part = int(time_part_str)
                 return TimePart(time_part, self, self.__PartType.FUTURE, max)
+            
     @staticmethod
     def init_base(initial_value: int) -> TimePart:
         return TimePart(initial_value, None, TimePart.__PartType.WILDCARD, initial_value+1)
