@@ -1,8 +1,24 @@
 from __future__ import annotations
 from enum import Enum
 import sys
+from typing import Callable
 
 
+
+class TimeUnitData:
+    def __init__(self, max: int|Callable[[int|None], int]) -> None:
+        self.max = max
+    
+    def getMax(self, parent_current: int|None) -> int:
+        if isinstance(self.max, int):
+            return self.max
+        else:
+            return self.max(parent_current)
+
+class TimeUnit(Enum):
+    MINUTE = TimeUnitData(59)
+    HOUR = TimeUnitData(23)
+    BASE = TimeUnitData(1)
 
 
 class TimePart:
@@ -14,19 +30,19 @@ class TimePart:
     class NotATimePartError(ValueError):
         pass
     
-    def __init__(self, value: int, parent: TimePart|None, part_type: __PartType, max:int) -> None:
-        self.value = value
-        self.__max = max
+    def __init__(self, value: int, parent: TimePart|None, part_type: __PartType, unit: TimeUnit) -> None:
+        if value > unit.value.getMax(parent.get_value() if parent is not None else None): raise self.NotATimePartError
+        self.__value = value
+        self.__unit = unit.value
         self.__parent = parent
         self.__part_type = part_type
         
     def __wildcard(self):
-        if self.value == self.__max:
-            self.value = 0
-            if self.__parent is not None:
-                self.__parent.__increment()
+        if self.__parent is not None and self.__value >= self.__unit.getMax(self.__parent.get_value()):
+            self.__value -= self.__unit.getMax(self.__parent.get_value())
+            self.__parent.__increment()
         else:
-            self.value += 1
+            self.__value += 1
             
     def __fixed(self):
         if self.__parent is not None:
@@ -41,43 +57,43 @@ class TimePart:
                 
         self.__part_type = self.__PartType.FUTURE
     
-    def parse_next(self, time_part_str: str, max: int, current_value: int) -> TimePart:
-        if self.is_time_part(time_part_str, max, True): raise self.NotATimePartError
+    def parse_next(self, time_part_str: str, unit: TimeUnit, current_value: int) -> TimePart:
+        if self.is_time_part(time_part_str, unit, True, self): raise self.NotATimePartError
         
         match time_part_str, self.__part_type == self.__PartType.FUTURE:
             case "*", True:
-                return TimePart(current_value, self, self.__PartType.WILDCARD, max)
+                return TimePart(current_value, self, self.__PartType.WILDCARD, unit)
             
             case "*", False:
-                return TimePart(0, self, self.__PartType.FUTURE, max)
+                return TimePart(0, self, self.__PartType.FUTURE, unit)
             
             case _, True:
                 time_part = int(time_part_str)
                 if time_part < current_value:
                     self.__increment()
-                    return TimePart(time_part, self, self.__PartType.FUTURE, max)
+                    return TimePart(time_part, self, self.__PartType.FUTURE, unit)
                 else:
-                    return TimePart(time_part, self, self.__PartType.FIXED if time_part == current_value else self.__PartType.FUTURE, max)
+                    return TimePart(time_part, self, self.__PartType.FIXED if time_part == current_value else self.__PartType.FUTURE, unit)
             
             case _, False:
                 time_part = int(time_part_str)
-                return TimePart(time_part, self, self.__PartType.FUTURE, max)
+                return TimePart(time_part, self, self.__PartType.FUTURE, unit)
             
     @staticmethod
-    def init_base(initial_value: int) -> TimePart:
-        return TimePart(initial_value, None, TimePart.__PartType.WILDCARD, initial_value+1)
+    def init_base() -> TimePart:
+        return TimePart(0, None, TimePart.__PartType.WILDCARD, TimeUnit.BASE)
     
     @staticmethod
-    def is_time_part(time: str, max: int, allow_wildcard:bool) -> bool:
+    def is_time_part(time: str, unit: TimeUnit, allow_wildcard:bool, previous: TimePart|None=None) -> bool:
         if allow_wildcard and time == "*": return True
         try:
             t = int(time)
         except ValueError:
             return False
-        return 0 <= t <= max
+        return 0 <= t <= unit.value.getMax(previous.get_value() if previous is not None else None)
     
     def get_value(self) -> int:
-        return self.value
+        return self.__value
 
 
 
@@ -85,7 +101,7 @@ class TimePart:
 
 
 def is_time(hour: str, minute: str, allow_wildcard:bool=False) -> bool:
-    return TimePart.is_time_part(hour, 23, allow_wildcard) and TimePart.is_time_part(minute, 59, allow_wildcard)
+    return TimePart.is_time_part(hour, TimeUnit.HOUR, allow_wildcard) and TimePart.is_time_part(minute, TimeUnit.MINUTE, allow_wildcard)
 
 
 def parse_line(current_hour: int, current_minute: int, line: str) -> None:
@@ -97,9 +113,9 @@ def parse_line(current_hour: int, current_minute: int, line: str) -> None:
         minute_str, hour_str, command = job
         
         try:
-            day = TimePart.init_base(0)
-            hour = day.parse_next(hour_str, 23, current_hour)
-            minute = hour.parse_next(minute_str, 59, current_minute)
+            day = TimePart.init_base()
+            hour = day.parse_next(hour_str, TimeUnit.HOUR, current_hour)
+            minute = hour.parse_next(minute_str, TimeUnit.MINUTE, current_minute)
         except TimePart.NotATimePartError:
             print(failure_text)
         else:
