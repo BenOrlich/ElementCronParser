@@ -58,9 +58,9 @@ class TimePart:
         self.__part_type = self.__PartType.FUTURE
     
     def parse_next(self, time_part_str: str, unit: TimeUnit, current_value: int) -> TimePart:
-        if self.is_time_part(time_part_str, unit, True, self): raise self.NotATimePartError
+        if not self.is_time_part(time_part_str, unit, True, self): raise self.NotATimePartError
         
-        match time_part_str, self.__part_type == self.__PartType.FUTURE:
+        match time_part_str, self.__part_type != self.__PartType.FUTURE:
             case "*", True:
                 return TimePart(current_value, self, self.__PartType.WILDCARD, unit)
             
@@ -125,12 +125,19 @@ def parse_line(current_hour: int, current_minute: int, line: str) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
         raise TypeError("Parser takes 1 argument: The current time in 24hr HH:MM format")
+    if len(sys.argv) == 3:
+        file = open(sys.argv[2])
+    else:
+        file = sys.stdin
 
     current_time  = sys.argv[1].split(":")
     if len(current_time) != 2 or not is_time(current_time[0], current_time[1]):
         raise ValueError(f"{sys.argv[1]} is not a valid time, the time must be in 24hr HH:MM format")
 
-    for job in sys.stdin.readlines():
+    for job in file.readlines():
         parse_line(int(current_time[0]), int(current_time[1]), job)
+    
+    if len(sys.argv) == 3:
+        file.close()
