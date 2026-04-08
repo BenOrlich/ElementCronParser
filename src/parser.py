@@ -18,10 +18,10 @@ def is_time(hour: str, minute: str, allow_wildcard:bool=False) -> bool:
     return is_time_part(hour, 23, allow_wildcard) and is_time_part(minute, 59, allow_wildcard)
 
 
-def parse_line(current_hour: int, current_minute: int, line: str) -> None:
+def parse_line(current_hour: int, current_minute: int, line: str) -> tuple[str, bool]:
     job = line.rstrip().split(" ", 2)
     if len(job) != 3 or not is_time(job[1], job[0], True):
-        print(f"Incorrect format: {line.rstrip()}")
+        return f"Incorrect format: {line.rstrip()}", False
     else:
         [minute_str, hour_str, command] = job
             
@@ -48,7 +48,7 @@ def parse_line(current_hour: int, current_minute: int, line: str) -> None:
                 else:
                     today = False
                     
-        print(f"{job_hour:02d}:{job_minute:02d} {"today" if today else "tomorrow"} - {command}")
+        return f"{job_hour}:{job_minute:02d} {"today" if today else "tomorrow"} - {command}", True
 
 
 
@@ -62,4 +62,4 @@ if __name__ == "__main__":
         raise ValueError(f"{sys.argv[1]} is not a valid time, the time must be in 24hr HH:MM format")
 
     for job in sys.stdin.readlines():
-        parse_line(int(current_time[0]), int(current_time[1]), job)
+        print(parse_line(int(current_time[0]), int(current_time[1]), job))
