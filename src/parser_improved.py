@@ -119,7 +119,7 @@ def parse_line(current_hour: int, current_minute: int, line: str) -> tuple[str, 
         except TimePart.NotATimePartError:
             return failure_text, False
         else:
-            return f"{hour.get_value():02d}:{minute.get_value():02d} {"today" if day.get_value() == 0 else "tomorrow"} - {command}", True
+            return f"{hour.get_value()}:{minute.get_value():02d} {"today" if day.get_value() == 0 else "tomorrow"} - {command}", True
 
 
 
