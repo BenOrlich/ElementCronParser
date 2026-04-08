@@ -125,19 +125,12 @@ def parse_line(current_hour: int, current_minute: int, line: str) -> tuple[str, 
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
+    if len(sys.argv) != 2:
         raise TypeError("Parser takes 1 argument: The current time in 24hr HH:MM format")
-    if len(sys.argv) == 3:
-        file = open(sys.argv[2])
-    else:
-        file = sys.stdin
 
     current_time  = sys.argv[1].split(":")
     if len(current_time) != 2 or not is_time(current_time[0], current_time[1]):
         raise ValueError(f"{sys.argv[1]} is not a valid time, the time must be in 24hr HH:MM format")
 
-    for job in file.readlines():
+    for job in sys.stdin.readlines():
         print(parse_line(int(current_time[0]), int(current_time[1]), job)[0])
-    
-    if len(sys.argv) == 3:
-        file.close()
