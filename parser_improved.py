@@ -104,11 +104,11 @@ def is_time(hour: str, minute: str, allow_wildcard:bool=False) -> bool:
     return TimePart.is_time_part(hour, TimeUnit.HOUR, allow_wildcard) and TimePart.is_time_part(minute, TimeUnit.MINUTE, allow_wildcard)
 
 
-def parse_line(current_hour: int, current_minute: int, line: str) -> None:
+def parse_line(current_hour: int, current_minute: int, line: str) -> tuple[str, bool]:
     job = line.rstrip().split(" ", 2)
     failure_text = f"Incorrect format: {line.rstrip()}"
     if len(job) != 3:
-        print(failure_text)
+        return failure_text, False
     else:
         minute_str, hour_str, command = job
         
@@ -117,9 +117,9 @@ def parse_line(current_hour: int, current_minute: int, line: str) -> None:
             hour = day.parse_next(hour_str, TimeUnit.HOUR, current_hour)
             minute = hour.parse_next(minute_str, TimeUnit.MINUTE, current_minute)
         except TimePart.NotATimePartError:
-            print(failure_text)
+            return failure_text, False
         else:
-            print(f"{hour.get_value():02d}:{minute.get_value():02d} {"today" if day.get_value() == 0 else "tomorrow"} - {command}")
+            return f"{hour.get_value():02d}:{minute.get_value():02d} {"today" if day.get_value() == 0 else "tomorrow"} - {command}", True
 
 
 
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         raise ValueError(f"{sys.argv[1]} is not a valid time, the time must be in 24hr HH:MM format")
 
     for job in file.readlines():
-        parse_line(int(current_time[0]), int(current_time[1]), job)
+        print(parse_line(int(current_time[0]), int(current_time[1]), job)[0])
     
     if len(sys.argv) == 3:
         file.close()
